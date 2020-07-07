@@ -33,7 +33,7 @@ input_mapping = {
 output_mapping = {"csv": to_csv, "json": to_json, "xml": to_xml, "none": None}
 
 
-def extract_data(invoicefile, templates=None, input_module=pdftotext):
+def extract_data(invoicefile, templates=None, input_module=pdftotext, text_extract_only=False):
     """Extracts structured data from PDF/image invoices.
 
     This function uses the text extracted from a PDF file or image and
@@ -50,6 +50,8 @@ def extract_data(invoicefile, templates=None, input_module=pdftotext):
         Templates are loaded using `read_template` function in `loader.py`
     input_module : {'pdftotext', 'pdfminer', 'tesseract'}, optional
         library to be used to extract text from given `invoicefile`,
+    text_extract_only : boolean
+        extract the invoice text only and don't attempt to classify the individual parts
 
     Returns
     -------
@@ -85,12 +87,19 @@ def extract_data(invoicefile, templates=None, input_module=pdftotext):
     logger.debug(extracted_str)
     logger.debug("END pdftotext result =============================")
 
+    if text_extract_only:
+        res = {'text' : extracted_str}
+        return res
+
     logger.debug("Testing {} template files".format(len(templates)))
     for t in templates:
         optimized_str = t.prepare_input(extracted_str)
 
         if t.matches_input(optimized_str):
-            return t.extract(optimized_str)
+            res = t.extract(optimized_str)
+            if isinstance(res, dict):
+                res['text'] = optimized_str
+            return res
 
     logger.error("No template for %s", invoicefile)
     return False
